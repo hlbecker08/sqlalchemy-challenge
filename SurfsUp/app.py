@@ -1,6 +1,5 @@
 # Import the dependencies.
-import numpy as np
-import pandas as pd
+
 import datetime as dt
 import sqlalchemy
 from sqlalchemy.ext.automap import automap_base
@@ -41,10 +40,10 @@ def welcome():
     """List all available api routes."""
     return (
         f"Available Routes:<br/>"
-        f"/api/v1.0/precipitation"
-        f"/api/v1.0/stations"
-        f"/api/v1.0/tobs"
-        f"/api/v1.0/<start>"
+        f"/api/v1.0/precipitation<br/>"
+        f"/api/v1.0/stations<br/>"
+        f"/api/v1.0/tobs<br/>"
+        f"/api/v1.0/<start><br/>"
         f"/api/v1.0/<start>/<end>"
     )
 
@@ -56,28 +55,54 @@ def precipitation():
 
     # Perform a query to retrieve the data and precipitation scores
     data_prcp = session.query(measurement.date, measurement.prcp).\
-    filter(measurement.date >= one_year_ago).all()
+        filter(measurement.date >= one_year_ago).all()
     
-
-    # Save the query results as a Pandas DataFrame. Explicitly set the column names
-    df = pd.DataFrame(data_prcp, columns=['Date', 'Precipitation'])
-
-    # Sort the dataframe by date
-    df['Date'] = pd.to_datetime(df['Date'])
-    df = df.sort_values('Date')
     session.close()
+
+    precip = []
+    for date, prcp in data_prcp:
+        precip_dict = {}
+        precip_dict["Date"] = date
+        precip_dict["Precipitation"] = prcp
+        precip.append(precip_dict)
+
+    return jsonify(precip)
 
 @app.route("/api/v1.0/stations")
 def stations():
-    session.query(station.station).all()
+    stations = session.query(station.station).all()
+
     session.close()
+
+    all_names = list(np.ravel(stations))
+
+    return jsonify(all_names)
+
+
 @app.route("/api/v1.0/tobs")
 def tobs():
     # Calculate the date one year from the last date in data set.
     one_year_ago = dt.date(2017, 8, 23) - dt.timedelta(days=365) 
 
     # Query the last 12 months of temperature observation data for station USC00519281
-    data_temp = session.query(measurement.date, measurement.tobs).\
-    filter(measurement.date >= one_year_ago).\
-    filter(measurement.station == 'USC00519281').all()
+    data_temp = session.query(measurement.station, measurement.date, measurement.tobs).\
+        filter(measurement.date >= one_year_ago).\
+        filter(measurement.station == 'USC00519281').all()
+    
     session.close()
+
+    temp = []
+    for station, date, tobs in data_temp:
+        temp_dict = {}
+        temp_dict["Station"] = station
+        temp_dict["Date"] = date
+        temp_dict["Temperature"] = tobs
+        temp.append(temp_dict)
+
+    return jsonify(temp)
+
+
+
+
+if __name__ == "__main__":
+    app.run(debug=True)
